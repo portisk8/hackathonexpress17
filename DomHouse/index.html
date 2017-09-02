@@ -49,17 +49,20 @@
               </label>
             </li>
             <li class="list-inline-item">
-              <a href="#" class="btn btn-secondary btn-lg" onclick="cerrarPuerta();">
+              <button id='openDoor' class="btn btn-secondary btn-lg" onclick="abrirPuerta();">
                 <span class="network-name">Abrir</span>
+              </button>
+                
               </a>
             </li>
             <li class="list-inline-item">
-              <a href="#" class="btn btn-secondary btn-lg">
+              <button id='closeDoor' class="btn btn-secondary btn-lg" onclick="cerrarPuerta();">
                 <span class="network-name">Cerrar</span>
+              </button>
               </a>
             </li>
             <li class="list-inline-item">
-                <input type="text" class="form-control" placeholder="Estado">
+                <span id='EstadoPuerta' placeholder="Estado"></span>
             </li>
           </ul>
           <hr class="intro-divider">
@@ -71,7 +74,7 @@
                 </label>
               </li>
               <li class="list-inline-item">
-                <input type="text" class="form-control" placeholder="Actividad">
+                <span id='movimiento1'></span>
               </li>
             </ul>
         </div>
@@ -106,23 +109,58 @@
     <script src="vendor/jquery/jquery.min.js"></script>
     <script src="vendor/popper/popper.min.js"></script>
     <script src="vendor/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../node_modules/mqtt/mqtt.js"></script>
+    <script src="http://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="js/webWorker.js"></script>
 
     <script>
-      function cerrarPuerta(){
-        var mqtt = require('mqtt');
-        var client  = mqtt.connect('mqtt://test.mosquitto.org');
 
+    var client  = mqtt.connect('ws://test.mosquitto.org:8080');
         client.on('connect', function () {
-          client.publish('probar/', 'Hello mqtt');
+          client.subscribe('/hx/#');
         });
-
-        client.on('message', function (topic, message) {
-          // message is Buffer
-          console.log(message.toString());
-          client.end()
-        });
+ 
+      function abrirPuerta(){
+        //var mqtt = require('mqtt');
+       document.getElementById('openDoor').disabled = true;
+       document.getElementById('closeDoor').disabled = false;
+      client.publish('/hx/door/open', 'Puerta Abierta');
       }
+      function estadoPuerta(){
+
+      }
+      function cerrarPuerta(){
+        //var mqtt = require('mqtt');
+          client.publish('/hx/door/close', 'Puerta Cerrada');
+       document.getElementById('openDoor').disabled = false;
+       document.getElementById('closeDoor').disabled = true;
+      }
+      client.on('message', function (topic, message) {
+        if(topic === '/hx/')
+         document.getElementById("EstadoPuerta").innerHTML= message.toString();
+         console.log(topic);
+         if(topic === '/hx/pir/response'){
+          console.log(message);
+          if(message.toString() === '1'){
+          console.log('move detected');            
+          document.getElementById("movimiento1").innerHTML= 'Presencia Detectada'; 
+          }else{
+          console.log('move not detected');            
+          document.getElementById("movimiento1").innerHTML= 'Presencia No Detectada'; 
+          }
+         }
+      });
+
+    if(typeof(Worker) !== "undefined") {
+        if(typeof(w) == "undefined") {
+            w = new Worker("/js/webWorker.js");
+        }
+        w.onmessage = function(event) {
+            document.getElementById("movimiento1").innerHTML = event.data;
+        };
+    } else {
+        document.getElementById("movimiento1").innerHTML = "Sorry! No Web Worker support.";
+    }
+
     </script>
 
   </body>
